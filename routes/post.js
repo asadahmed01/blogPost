@@ -8,13 +8,13 @@ router.get("/", async (req, res) => {
 
 //create a post
 
-router.post("/create", async (req, res) => {
-  const { postId, title, content, user, comments, likes } = req.body;
+router.post("/posts/create", async (req, res) => {
+  const { postId, title, content, userId, comments, likes } = req.body;
   const post = new Post({
     postId,
     title,
     content,
-    userId: user.userId,
+    userId,
     comments,
     likes,
   });
@@ -28,13 +28,15 @@ router.post("/create", async (req, res) => {
 
 //like and unlike a post
 
-router.put("/:id/like", async (req, res) => {
+router.put("/posts/:id/like", async (req, res) => {
   const id = req.params.id;
-  try {
-    const post = await Post.findOne({ postId: id });
 
+  try {
+    const post = await Post.findOne({ postId: Number(id) });
+    console.log(post.likes);
     if (!post.likes.includes(req.body.userId)) {
-      await Post.updateOne({ $push: { likes: req.body } });
+      //console.log(post);
+      await post.updateOne({ $push: { likes: req.body.userId } });
       res.send({ msg: "liked!" });
     } else {
       await post.updateOne({ $pull: { likes: req.body.userId } });
@@ -42,6 +44,18 @@ router.put("/:id/like", async (req, res) => {
     }
   } catch (error) {
     res.status(500).send({ msg: error.message });
+  }
+});
+
+//comment a post
+
+router.put("/posts/:id/reply", async (req, res) => {
+  try {
+    const post = await Post.findOne({ postId: Number(req.params.id) });
+    await Post.updateOne({ $push: { comments: req.body } });
+    res.send({ msg: "replied!" });
+  } catch (error) {
+    res.status(500).send({ msg: "could not save reply" });
   }
 });
 

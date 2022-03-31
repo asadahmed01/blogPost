@@ -9,8 +9,10 @@ const Post = mongoose.model(
     title: String,
     content: String,
     userId: Number,
-    likes: [{ _id: false, userId: Number }],
-    comments: [{ commentId: Number, commentText: String, userId: Number }],
+    likes: [Number],
+    comments: [
+      { _id: false, commentId: Number, commentText: String, userId: Number },
+    ],
   })
 );
 
