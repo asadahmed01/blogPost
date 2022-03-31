@@ -26,6 +26,23 @@ router.post("/posts/create", async (req, res) => {
   }
 });
 
+//update a post
+
+router.put("/posts/update/:id", async (req, res) => {
+  const id = req.params.id;
+  try {
+    const post = await Post.findOne({ postId: Number(id) });
+    console.log(post);
+    if (post.userId === req.body.userId) {
+      await post.updateOne({ $set: req.body });
+      res.status(200).json("the post has been updated");
+    } else {
+      res.status(403).json("Access Denied!");
+    }
+  } catch (err) {
+    res.status(500).json(err);
+  }
+});
 //like and unlike a post
 
 router.put("/posts/:id/like", async (req, res) => {
