@@ -14,7 +14,7 @@ app.use(express.static("public"));
 
 app.use("/", postRoute);
 const PORT = process.env.PORT || 9000;
-app.listen(PORT || 9000, () => {
+module.exports = app.listen(PORT || 9000, () => {
   console.log(`server running on post ${PORT}`);
 });
 

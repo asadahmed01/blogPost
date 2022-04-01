@@ -2,16 +2,29 @@ const { Post } = require("../models/postModel");
 
 const router = require("express").Router();
 
-router.get("/", async (req, res) => {
-  res.send("<h1>Welcome to the social media of the future</h1>");
+router.get("/posts", async (req, res) => {
+  try {
+    const posts = await Post.find({});
+    res.send(posts);
+  } catch (error) {
+    res.send({ mgs: [] });
+  }
+});
+
+router.get("/posts/:id", async (req, res) => {
+  try {
+    const posts = await Post.find({ _id: req.params.id });
+    res.send(posts);
+  } catch (error) {
+    res.status(404).send({ msg: "not found" });
+  }
 });
 
 //create a post
 
 router.post("/posts/create", async (req, res) => {
-  const { postId, title, content, userId, comments, likes } = req.body;
+  const { title, content, userId, comments, likes } = req.body;
   const post = new Post({
-    postId,
     title,
     content,
     userId,
@@ -20,7 +33,7 @@ router.post("/posts/create", async (req, res) => {
   });
   try {
     await post.save();
-    res.send({ msg: "success.", post: post });
+    res.send({ msg: "success", post: post });
   } catch (error) {
     res.status(400).send(error.message);
   }
@@ -31,48 +44,105 @@ router.post("/posts/create", async (req, res) => {
 router.put("/posts/update/:id", async (req, res) => {
   const id = req.params.id;
   try {
-    const post = await Post.findOne({ postId: Number(id) });
+    const post = await Post.findOne({ _id: id });
     console.log(post);
     if (post.userId === req.body.userId) {
       await post.updateOne({ $set: req.body });
-      res.status(200).json("the post has been updated");
+      res.status(200).json({ msg: "the post has been updated" });
     } else {
-      res.status(403).json("Access Denied!");
+      res.status(403).json({ msg: "Access Denied!" });
     }
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+//delete a post
+
+router.put("/posts/delete/:id", async (req, res) => {
+  try {
+    const post = await Post.findOne({ _id: req.params.id });
+    if (post.userId !== req.body.userId)
+      return res.status(403).send({ msg: "access denied." });
+    await post.deleteOne();
+    res.status(200).json({ msg: "the post has been deleted" });
   } catch (err) {
     res.status(500).json(err);
   }
 });
 //like and unlike a post
 
-router.put("/posts/:id/like", async (req, res) => {
+router.put("/posts/like/:id", async (req, res) => {
   const id = req.params.id;
 
   try {
-    const post = await Post.findOne({ postId: Number(id) });
+    const post = await Post.findOne({ _id: id });
     console.log(post.likes);
     if (!post.likes.includes(req.body.userId)) {
       //console.log(post);
       await post.updateOne({ $push: { likes: req.body.userId } });
-      res.send({ msg: "liked!" });
+      res.status(200).send({ msg: "liked!" });
     } else {
       await post.updateOne({ $pull: { likes: req.body.userId } });
-      res.status(200).json("The post has been disliked");
+      res.status(200).json({ msg: "disliked" });
     }
   } catch (error) {
     res.status(500).send({ msg: error.message });
   }
 });
 
-//comment a post
+//reply to a post
 
-router.put("/posts/:id/reply", async (req, res) => {
+router.put("/posts/reply/:id", async (req, res) => {
   try {
-    const post = await Post.findOne({ postId: Number(req.params.id) });
-    await Post.updateOne({ $push: { comments: req.body } });
-    res.send({ msg: "replied!" });
+    const post = await Post.findOne({ _id: req.params.id });
+    await post.updateOne({ $push: { comments: req.body } });
+    res.status(200).send({ msg: "replied!" });
   } catch (error) {
     res.status(500).send({ msg: "could not save reply" });
+  }
+});
+
+//update a reply
+router.put("/posts/reply/update/:id", async (req, res) => {
+  try {
+    const post = await Post.findOne({ "comments._id": req.params.id });
+    const temp = post.comments.find((el) => el._id.equals(req.params.id));
+    console.log(temp);
+    if (temp.userId !== req.body.userId)
+      return res.send({ msg: "access denied" });
+    await Post.findOneAndUpdate(
+      { "comments._id": req.params.id },
+      {
+        $set: {
+          "comments.$.commentText": req.body.commentText,
+        },
+      }
+    );
+    res.status(200).send({ msg: "success" });
+  } catch (error) {
+    res.send({ msg: error.message });
+  }
+});
+
+//delete a reply
+
+router.put("/posts/reply/delete/:id", async (req, res) => {
+  try {
+    const post = await Post.findOne({ "comments._id": req.params.id });
+    const temp = post.comments.find((el) => el._id.equals(req.params.id));
+    console.log(temp);
+
+    if (temp.userId !== req.body.userId)
+      return res.send({ msg: "access denied" });
+
+    await Post.findOneAndUpdate(
+      { "comments._id": req.params.id },
+      { $pull: { comments: { _id: req.params.id } } }
+    );
+    res.status(200).send({ msg: "reply deleted" });
+  } catch (error) {
+    res.send({ msg: error.message });
   }
 });
 
